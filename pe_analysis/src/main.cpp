@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <windows.h>
+#include "pe_analysis.h"
 
 int main(){
     std::string file_path = "test_dll.dll";
@@ -31,11 +32,17 @@ int main(){
     //NT头
     IMAGE_NT_HEADERS nt_headers;
     memcpy(&nt_headers, p, sizeof(IMAGE_NT_HEADERS));
-    p += sizeof(IMAGE_NT_HEADERS);
     //PE头,文件头
     IMAGE_FILE_HEADER file_header = nt_headers.FileHeader;
     //可选头
     IMAGE_OPTIONAL_HEADER option_header = nt_headers.OptionalHeader;
+    //节表
+    p += sizeof(IMAGE_NT_HEADERS);
+    for (int i = 0; i < file_header.NumberOfSections; i++) {
+        IMAGE_SECTION_HEADER* section = (IMAGE_SECTION_HEADER*)p;
+        
+        p += sizeof(IMAGE_SECTION_HEADER);
+    }
 
     delete[] p_buff;
 }
