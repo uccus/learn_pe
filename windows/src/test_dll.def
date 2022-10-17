@@ -1,0 +1,4 @@
+LIBRARY
+    EXPORTS
+        test_add     
+        test_sub    @13
