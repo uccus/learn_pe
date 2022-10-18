@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(windows_test)
 
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/../output)
-set(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/../output)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../output)
+set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../output)
 
 set(DLL_SRC src/test_dll.cpp src/test_dll.def)
 

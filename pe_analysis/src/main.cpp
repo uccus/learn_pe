@@ -23,26 +23,17 @@ int main(){
     ifs.read(p_buff, f_size);
     ifs.close();
 
-    char* p = p_buff;
+    PEAnalysis pe(p_buff, f_size);
 
-    //DOS头
-    IMAGE_DOS_HEADER dos_header;
-    memcpy(&dos_header, p, sizeof(IMAGE_DOS_HEADER));
-    p += dos_header.e_lfanew;
-    //NT头
-    IMAGE_NT_HEADERS nt_headers;
-    memcpy(&nt_headers, p, sizeof(IMAGE_NT_HEADERS));
-    //PE头,文件头
-    IMAGE_FILE_HEADER file_header = nt_headers.FileHeader;
-    //可选头
-    IMAGE_OPTIONAL_HEADER option_header = nt_headers.OptionalHeader;
-    //节表
-    p += sizeof(IMAGE_NT_HEADERS);
-    for (int i = 0; i < file_header.NumberOfSections; i++) {
-        IMAGE_SECTION_HEADER* section = (IMAGE_SECTION_HEADER*)p;
-        
-        p += sizeof(IMAGE_SECTION_HEADER);
-    }
+    IMAGE_DOS_HEADER* dos_header = pe.getDosHeader();
+    IMAGE_NT_HEADERS* nt_header = pe.getNTHeader();
+    IMAGE_FILE_HEADER* file_header = pe.getFileHeader();
+    std::vector<IMAGE_SECTION_HEADER*> sections = pe.getSections();
+    int foa = pe.rva2foa(0xC000);
 
-    delete[] p_buff;
+    char* newS_1 = nullptr;
+    int n_size = pe.addNewSection1(&newS_1);
+    PEAnalysis pe_1(newS_1, n_size);
+    pe_1.save("./4.dll");
+
 }
