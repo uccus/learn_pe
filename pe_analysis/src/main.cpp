@@ -4,7 +4,7 @@
 #include "pe_analysis.h"
 
 int main(){
-    std::string file_path = "test_dll.dll";
+    std::string file_path = "test_exe.exe";
     std::ifstream ifs(file_path, std::ios::ate|std::ios::binary);
     if (!ifs.is_open()){
         std::cout << "文件不存在" << std::endl;
@@ -34,6 +34,6 @@ int main(){
     char* newS_1 = nullptr;
     int n_size = pe.addNewSection1(&newS_1);
     PEAnalysis pe_1(newS_1, n_size);
-    pe_1.save("./4.dll");
+    pe_1.save("./5.exe");
 
 }

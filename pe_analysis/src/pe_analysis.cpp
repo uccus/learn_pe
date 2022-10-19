@@ -127,6 +127,16 @@ int PEAnalysis::addNewSection1(char** out_buf)
         return -1;
     }
 
+    // 需要修改的内容：
+    // 1. 文件头中节的NumberOfSections
+    file_header->NumberOfSections += 1;
+    // 2. 可选头中的SizeOfImage
+    int old_image_size = op_header->SizeOfImage;
+    int new_size = first_section->SizeOfRawData % op_header->FileAlignment == 0 ? 
+        first_section->SizeOfRawData : 
+        op_header->FileAlignment * (first_section->SizeOfRawData / op_header->FileAlignment + 1);
+    op_header->SizeOfImage += new_size;
+    // 3. 补充新节的描述信息
     IMAGE_SECTION_HEADER tmp = { 0 };
     memcpy(&tmp, first_section, section_size);
     char* p_txt = ".text2";
@@ -135,24 +145,71 @@ int PEAnalysis::addNewSection1(char** out_buf)
     int n_last_raw = last_section->PointerToRawData + last_section->SizeOfRawData;
     tmp.VirtualAddress = n_last % op_header->SectionAlignment == 0 ? n_last : op_header->SectionAlignment * (n_last / op_header->SectionAlignment + 1);
     tmp.PointerToRawData = n_last_raw % op_header->FileAlignment == 0 ? n_last_raw : op_header->FileAlignment * (n_last_raw / op_header->FileAlignment + 1);
-    
-    char* buf = new char[op_header->SizeOfImage + first_section->SizeOfRawData];
-    memcpy(buf, data, op_header->SizeOfImage);
-    memcpy(buf + ((char*)last_section - data), &tmp, section_size);
-    memcpy(buf + op_header->SizeOfImage, data + rva2foa(first_section->VirtualAddress), first_section->SizeOfRawData);
+    // 4. 新节的内容追加到末尾
+    char* buf = new char[_size + new_size];
+    memset(buf, 0, _size + new_size);
+    // 拷贝原内容
+    memcpy(buf, data, _size);
+    // 追加节
+    memcpy(buf + ((char*)last_section - data + section_size), &tmp, section_size);
+    // 追加节对应内容
+    memcpy(buf + tmp.PointerToRawData, data + first_section->PointerToRawData, first_section->SizeOfRawData);
     *out_buf = buf;
 
-    return op_header->SizeOfImage + first_section->SizeOfRawData;
+    return _size + new_size;
 }
 
 int PEAnalysis::addNewSection2(char** out_buf)
 {
+    // 以第一个节为例
+    IMAGE_DOS_HEADER* dos_header = getDosHeader();
+    IMAGE_FILE_HEADER* file_header = getFileHeader();
+    IMAGE_OPTIONAL_HEADER* op_header = getOptionHeader();
+    IMAGE_SECTION_HEADER* first_section = getSections().front();
+    IMAGE_SECTION_HEADER* last_section = getSections().back();
+    // 检查dos存根数据的大小 + 最后一个节后的空白是否可以放下两个节
+    int n_dos_stub = dos_header->e_lfanew - sizeof(IMAGE_DOS_HEADER);
+    int n_section_left_space = op_header->SizeOfHeaders - ((char*)last_section + sizeof(IMAGE_SECTION_HEADER) - data);
+    if (n_dos_stub + n_section_left_space < 2 * sizeof(IMAGE_SECTION_HEADER)){
+        std::cout << "dos存根空间+节后空间不足" << std::endl;
+        return -1;
+    }
+    // 提升NT头+所有节表,干掉dos存根
+    memcpy(data + sizeof(IMAGE_DOS_HEADER), data + dos_header->e_lfanew, op_header->SizeOfHeaders - dos_header->e_lfanew);
+    // 修改dos头指向
+    dos_header->e_lfanew = sizeof(IMAGE_DOS_HEADER);
+    // 刷新头指针
+    file_header = getFileHeader();
+    op_header = getOptionHeader();
+    first_section = getSections().front();
+    last_section = getSections().back();
+    // 节表尾部清零
+    memset(last_section + sizeof(IMAGE_SECTION_HEADER), 0, op_header->SizeOfHeaders - ((char*)last_section + sizeof(IMAGE_SECTION_HEADER) - data));
 
-    return 0;
+    return addNewSection1(out_buf);
 }
 
 int PEAnalysis::addNewSection3(char** out_buf)
 {
+    IMAGE_DOS_HEADER* dos_header = getDosHeader();
+    IMAGE_FILE_HEADER* file_header = getFileHeader();
+    IMAGE_OPTIONAL_HEADER* op_header = getOptionHeader();
+    IMAGE_SECTION_HEADER* first_section = getSections().front();
+    IMAGE_SECTION_HEADER* last_section = getSections().back();
+
+    // 以第一个节为例
+    int n_raw_size = first_section->SizeOfRawData % op_header->FileAlignment == 0 ? first_section->SizeOfRawData :
+        op_header->FileAlignment * (first_section->SizeOfRawData / op_header->FileAlignment + 1);
+
+    last_section->SizeOfRawData += n_raw_size;
+    last_section->Misc.VirtualSize += n_raw_size;
+    last_section->Characteristics |= first_section->Characteristics;
+
+    char* buf = new char[_size + n_raw_size];
+    memcpy(buf, data, _size);
+    memset(buf + _size, 0, n_raw_size);
+    memcpy(buf + _size, data + first_section->PointerToRawData, first_section->SizeOfRawData);
+    *out_buf = buf;
 
     return 0;
 }
