@@ -32,8 +32,9 @@ int main(){
     int foa = pe.rva2foa(0xC000);
 
     char* newS_1 = nullptr;
-    int n_size = pe.addNewSection1(&newS_1);
+    int n_size = pe.addNewSection2(&newS_1);
     PEAnalysis pe_1(newS_1, n_size);
     pe_1.save("./5.exe");
 
+    delete[] p_buff;
 }

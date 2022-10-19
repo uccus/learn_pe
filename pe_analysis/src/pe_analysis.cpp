@@ -4,9 +4,13 @@
 #include "pe_analysis.h"
 
 PEAnalysis::PEAnalysis(char* pe, int size)
-    : data(pe)
+    : data(nullptr)
     , _size(size)
 {
+    if (_size > 0) {
+        data = new char[_size];
+        memcpy(data, pe, _size);
+    }
 }
 
 PEAnalysis::~PEAnalysis()
@@ -184,9 +188,11 @@ int PEAnalysis::addNewSection2(char** out_buf)
     first_section = getSections().front();
     last_section = getSections().back();
     // 节表尾部清零
-    memset(last_section + sizeof(IMAGE_SECTION_HEADER), 0, op_header->SizeOfHeaders - ((char*)last_section + sizeof(IMAGE_SECTION_HEADER) - data));
+    memset((char*)last_section + sizeof(IMAGE_SECTION_HEADER), 0, op_header->SizeOfHeaders - ((char*)last_section + sizeof(IMAGE_SECTION_HEADER) - data));
 
     return addNewSection1(out_buf);
+    //*out_buf = data;
+    //return _size;
 }
 
 int PEAnalysis::addNewSection3(char** out_buf)
